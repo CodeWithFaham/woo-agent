@@ -189,6 +189,7 @@
     <div class="title">Backend URL set karein</div>
     <div class="subtitle">Ye ek dafa set karna hai (woo_agent_api.py jahan deploy hai)</div>
     <input type="text" id="backend-input" placeholder="https://your-app.up.railway.app">
+    <input type="text" id="secret-input" placeholder="Secret key (APP_SECRET)">
     <button class="setup-btn" onclick="saveBackend()">Save aur shuru karein</button>
   </div>
 
@@ -217,9 +218,10 @@
 
 <script>
   var API_URL = localStorage.getItem('woo_agent_backend') || '';
+  var APP_SECRET = localStorage.getItem('woo_agent_secret') || '';
 
   function init() {
-    if (!API_URL) {
+    if (!API_URL || !APP_SECRET) {
       document.getElementById('setup').style.display = 'flex';
       document.getElementById('main-ui').style.display = 'none';
     } else {
@@ -235,9 +237,12 @@
 
   function saveBackend() {
     var val = document.getElementById('backend-input').value.trim().replace(/\/$/, '');
-    if (!val) return;
+    var secret = document.getElementById('secret-input').value.trim();
+    if (!val || !secret) return;
     localStorage.setItem('woo_agent_backend', val);
+    localStorage.setItem('woo_agent_secret', secret);
     API_URL = val;
+    APP_SECRET = secret;
     init();
   }
 
@@ -261,7 +266,7 @@
 
     fetch(API_URL + '/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET },
       body: JSON.stringify({ message: text })
     })
     .then(function(r) { return r.json(); })
@@ -278,7 +283,7 @@
   function refreshTicker() {
     fetch(API_URL + '/api/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-App-Secret': APP_SECRET },
       body: JSON.stringify({ message: '__TICKER__' })
     })
     .then(function(r) { return r.json(); })

@@ -63,6 +63,12 @@ CORS(app, origins=["*"])
 
 @app.route("/api/chat", methods=["POST"])
 def chat():
+    # --- Security check: sirf sahi APP_SECRET wale requests allow karein ---
+    provided_secret = request.headers.get("X-App-Secret", "")
+    expected_secret = os.getenv("APP_SECRET", "")
+    if not expected_secret or provided_secret != expected_secret:
+        return jsonify({"reply": "Unauthorized."}), 401
+
     body = request.get_json(force=True, silent=True) or {}
     message = body.get("message", "").strip()
 

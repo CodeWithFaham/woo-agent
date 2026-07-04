@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<!--
+  WooCommerce Dashboard Agent - Chat Widget
+  ============================================
+  EMBED INSTRUCTIONS (WordPress):
+  1. Deploy woo_agent_api.py somewhere reachable (same server or subdomain)
+     e.g. https://yourstore.com:5000 or api.yourstore.com
+  2. Change API_URL below to that address.
+  3. In WP Admin, install "Insert Headers and Footers" plugin (or use
+     Appearance -> Theme File Editor -> footer.php), and paste the
+     contents of the <body> section (widget-root + <style> + <script>)
+     right before </body>. Do NOT paste <!DOCTYPE>/<html>/<head> tags.
+  4. Widget will appear as a floating button bottom-right on every
+     admin/site page it's added to.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Widget Preview</title>
+<style>
+  body { margin:0; font-family: 'Inter', sans-serif; background:#0A0C10; }
+</style>
+</head>
+<body>
+
+<div id="woo-agent-widget">
+  <style>
+    #woo-agent-widget * { box-sizing: border-box; }
+    #woo-agent-widget {
+      --bg: #12151A;
+      --panel: #1B1F27;
+      --panel-2: #20242D;
+      --accent: #00D9A3;
+      --gold: #F0B94D;
+      --text: #E8EAED;
+      --muted: #7C8494;
+      --border: #2A2F3A;
+      font-family: 'Inter', -apple-system, sans-serif;
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999999;
+    }
+    #woo-agent-widget .launcher {
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: transform .15s ease;
+    }
+    #woo-agent-widget .launcher:hover { transform: scale(1.05); }
+    #woo-agent-widget .launcher svg { width: 26px; height: 26px; stroke: var(--accent); }
+    #woo-agent-widget .pulse-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--accent);
+      position: absolute;
+      top: 2px; right: 2px;
+      box-shadow: 0 0 0 0 rgba(0,217,163,0.7);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(0,217,163,0.55); }
+      70% { box-shadow: 0 0 0 8px rgba(0,217,163,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,217,163,0); }
+    }
+    #woo-agent-widget .panel {
+      position: absolute;
+      bottom: 74px;
+      right: 0;
+      width: 360px;
+      height: 520px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    }
+    #woo-agent-widget .panel.open { display: flex; }
+    #woo-agent-widget .header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    #woo-agent-widget .header-left { display: flex; align-items: center; gap: 10px; }
+    #woo-agent-widget .header-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--accent);
+      box-shadow: 0 0 0 0 rgba(0,217,163,0.7);
+      animation: pulse 2s infinite;
+    }
+    #woo-agent-widget .header-title {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: 0.2px;
+    }
+    #woo-agent-widget .header-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    #woo-agent-widget .close-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px;
+      line-height: 1; padding: 4px;
+    }
+    #woo-agent-widget .close-btn:hover { color: var(--text); }
+    #woo-agent-widget .ticker {
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      gap: 18px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    #woo-agent-widget .ticker b { color: var(--gold); font-weight: 600; }
+    #woo-agent-widget .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #woo-agent-widget .msg { max-width: 84%; font-size: 13px; line-height: 1.5; }
+    #woo-agent-widget .msg.user {
+      align-self: flex-end;
+      background: var(--accent);
+      color: #072E24;
+      padding: 8px 12px;
+      border-radius: 10px 10px 2px 10px;
+      font-weight: 500;
+    }
+    #woo-agent-widget .msg.bot {
+      align-self: flex-start;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 10px 10px 10px 2px;
+      white-space: pre-wrap;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+    }
+    #woo-agent-widget .msg.typing { color: var(--muted); font-style: italic; }
+    #woo-agent-widget .quick-row {
+      display: flex; gap: 6px; padding: 0 16px 10px; flex-wrap: wrap;
+    }
+    #woo-agent-widget .quick {
+      font-size: 11px; color: var(--accent); background: rgba(0,217,163,0.08);
+      border: 1px solid rgba(0,217,163,0.25); border-radius: 20px;
+      padding: 5px 10px; cursor: pointer; white-space: nowrap;
+    }
+    #woo-agent-widget .quick:hover { background: rgba(0,217,163,0.16); }
+    #woo-agent-widget .input-row {
+      border-top: 1px solid var(--border);
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      background: var(--panel);
+    }
+    #woo-agent-widget input[type=text] {
+      flex: 1;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 9px 12px;
+      font-size: 13px;
+      outline: none;
+    }
+    #woo-agent-widget input[type=text]:focus { border-color: var(--accent); }
+    #woo-agent-widget .send-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      width: 38px;
+      color: #072E24;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #woo-agent-widget .send-btn svg { width: 16px; height: 16px; }
+  </style>
+
+  <div class="panel" id="wa-panel">
+    <div class="header">
+      <div class="header-left">
+        <span class="header-dot"></span>
+        <div>
+          <div class="header-title">Store agent</div>
+          <div class="header-sub" id="wa-status">connecting…</div>
+        </div>
+      </div>
+      <button class="close-btn" id="wa-close">&times;</button>
+    </div>
+    <div class="ticker" id="wa-ticker">
+      Orders today <b id="wa-orders">–</b> &nbsp;|&nbsp; Sales (7d) <b id="wa-sales">–</b>
+    </div>
+    <div class="messages" id="wa-messages">
+      <div class="msg bot">Assalam-o-alaikum. Store ke orders, customers ya sales ke baray mein pochein.</div>
+    </div>
+    <div class="quick-row">
+      <span class="quick" data-q="Aaj kitne orders aye?">Aaj ke orders</span>
+      <span class="quick" data-q="Is hafte ki sales report do">Weekly sales</span>
+      <span class="quick" data-q="Low stock products dikhao">Low stock</span>
+      <span class="quick" data-q="Total customers kitne hain?">Total customers</span>
+    </div>
+    <div class="input-row">
+      <input type="text" id="wa-input" placeholder="Message likhein…">
+      <button class="send-btn" id="wa-send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="launcher" id="wa-launcher">
+    <span class="pulse-dot"></span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  </div>
+</div>
+
+<script>
+(function() {
+  var API_URL = "https://yourstore.com:5000/api/chat";
+
+  var panel = document.getElementById('wa-panel');
+  var launcher = document.getElementById('wa-launcher');
+  var closeBtn = document.getElementById('wa-close');
+  var messages = document.getElementById('wa-messages');
+  var input = document.getElementById('wa-input');
+  var sendBtn = document.getElementById('wa-send');
+  var status = document.getElementById('wa-status');
+  var ordersEl = document.getElementById('wa-orders');
+  var salesEl = document.getElementById('wa-sales');
+
+  launcher.addEventListener('click', function() {
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) input.focus();
+  });
+  closeBtn.addEventListener('click', function() { panel.classList.remove('open'); });
+
+  document.querySelectorAll('.quick').forEach(function(q) {
+    q.addEventListener('click', function() { sendMessage(q.getAttribute('data-q')); });
+  });
+
+  sendBtn.addEventListener('click', function() { sendMessage(input.value); });
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') sendMessage(input.value);
+  });
+
+  function addMessage(text, cls) {
+    var div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.textContent = text;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+  }
+
+  function sendMessage(text) {
+    text = (text || '').trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    input.value = '';
+    var typing = addMessage('Agent soch raha hai…', 'bot typing');
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      typing.remove();
+      addMessage(data.reply || 'Kuch masla ho gaya, dobara koshish karein.', 'bot');
+    })
+    .catch(function() {
+      typing.remove();
+      addMessage('API se connect nahi ho saka. Backend server check karein.', 'bot');
+    });
+  }
+
+  function refreshTicker() {
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: '__TICKER__' })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      status.textContent = 'online';
+      if (data.orders_today !== undefined) ordersEl.textContent = data.orders_today;
+      if (data.sales_7d !== undefined) salesEl.textContent = data.sales_7d;
+    })
+    .catch(function() { status.textContent = 'offline'; });
+  }
+
+  refreshTicker();
+  setInterval(refreshTicker, 60000);
+})();
+</script>
+
+</body>
+</html>
