@@ -6,7 +6,7 @@ products) fetch karta hai aur natural language (Urdu/English) mein
 jawab deta hai.
 
 SETUP:
-1. pip install agno groq requests python-dotenv
+1. pip install agno anthropic requests python-dotenv
 2. .env file banayein (isi folder mein) is content ke sath:
 
     GROQ_API_KEY=gsk_xxxxxxxx
@@ -141,6 +141,56 @@ def get_total_customers() -> str:
 
 
 @tool(show_result=True)
+def get_unique_buyers(days: int = 30) -> str:
+    """
+    Pichle N dinon mein kitne UNIQUE log ne kharida (chahe unka account ho ya
+    guest checkout kiya ho). Ye registered "customer" count se alag hai -
+    ye orders ke billing email/name se unique buyers count karta hai, is
+    liye guest checkout wale stores ke liye zyada accurate hota hai.
+
+    Args:
+        days: Kitne pichle dinon ka data chahiye (default 30)
+    """
+    since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00")
+    all_orders = []
+    page = 1
+    while True:
+        data, headers = _woo_get(
+            "orders",
+            {"after": since, "per_page": 100, "page": page, "status": "any"},
+        )
+        if not data:
+            break
+        all_orders.extend(data)
+        total_pages = int(headers.get("X-WP-TotalPages", 1))
+        if page >= total_pages:
+            break
+        page += 1
+
+    if not all_orders:
+        return f"Pichle {days} din mein koi order nahi mila, is liye buyers count nahi ho saka."
+
+    unique_emails = set()
+    guest_count = 0
+    registered_count = 0
+    for o in all_orders:
+        email = (o.get("billing", {}) or {}).get("email", "").lower().strip()
+        if email:
+            unique_emails.add(email)
+        if o.get("customer_id", 0) == 0:
+            guest_count += 1
+        else:
+            registered_count += 1
+
+    return (
+        f"Pichle {days} din mein total {len(unique_emails)} unique buyers ne kharida "
+        f"(email ke hisaab se, chahe account ho ya na ho).\n"
+        f"Isme se {registered_count} orders logged-in accounts se, "
+        f"aur {guest_count} orders guest checkout (bina account) se aye."
+    )
+
+
+@tool(show_result=True)
 def get_recent_customers(count: int = 10) -> str:
     """
     Recent register hone wale customers ki list deta hai.
@@ -216,7 +266,6 @@ def get_sales_report(period: str = "week") -> str:
 
 woo_agent = Agent(
     name="WooCommerce Dashboard Agent",
-    # model=Groq(id="llama-3.3-70b-versatile"),
     model=Groq(id="openai/gpt-oss-120b"),
     tools=[
         get_recent_orders,
@@ -224,6 +273,7 @@ woo_agent = Agent(
         get_orders_count_range,
         get_order_details,
         get_total_customers,
+        get_unique_buyers,
         get_recent_customers,
         get_low_stock_products,
         get_top_selling_products,
@@ -235,6 +285,9 @@ woo_agent = Agent(
         "Numbers aur totals ko table ya bullet points mein dikhayein jab multiple items hon.",
         "Agar tool se error aye, user ko batayein ke API keys ya store URL check karein.",
         "Kabhi bhi order ya customer data invent na karein - hamesha tools se hi fetch karein.",
+        "Agar user 'kitne customers/users aye' jaisa sawal poochein aur store mein guest checkout enabled hai, "
+        "get_total_customers (sirf registered accounts) ki jagah get_unique_buyers tool use karein - "
+        "ye guest checkout wale buyers ko bhi count karta hai aur zyada accurate hota hai.",
     ],
     markdown=True,
     add_datetime_to_context=True,
