@@ -285,9 +285,13 @@ woo_agent = Agent(
         "Numbers aur totals ko table ya bullet points mein dikhayein jab multiple items hon.",
         "Agar tool se error aye, user ko batayein ke API keys ya store URL check karein.",
         "Kabhi bhi order ya customer data invent na karein - hamesha tools se hi fetch karein.",
-        "Agar user 'kitne customers/users aye' jaisa sawal poochein aur store mein guest checkout enabled hai, "
-        "get_total_customers (sirf registered accounts) ki jagah get_unique_buyers tool use karein - "
-        "ye guest checkout wale buyers ko bhi count karta hai aur zyada accurate hota hai.",
+        "Agar user 'kitne customers/users/log aye' jaisa koi bhi generic sawal poochein "
+        "(jese 'users kitne hain', 'customers dikhao', 'kitne log aye'), DEFAULT taur par "
+        "get_unique_buyers tool use karein, get_total_customers NAHI - kyunke zyada tar "
+        "WooCommerce stores mein guest checkout allowed hota hai aur get_total_customers "
+        "sirf registered accounts count karta hai jo 0 ya bohat kam dikha sakta hai. "
+        "get_total_customers sirf tab use karein jab user explicitly 'registered accounts' "
+        "ya 'jinhon ne account banaya hai' jaisa specific sawal poochein.",
     ],
     markdown=True,
     add_datetime_to_context=True,
