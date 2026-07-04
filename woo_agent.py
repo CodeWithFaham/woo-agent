@@ -141,6 +141,61 @@ def get_total_customers() -> str:
 
 
 @tool(show_result=True)
+def get_buyer_emails(days: int = 30, count: int = 50) -> str:
+    """
+    Pichle N dinon ke UNIQUE buyers ki naam aur email ki poori list deta hai
+    (chahe unka account ho ya guest checkout kiya ho). Jab user kahe "email
+    dikhao", "kis kis ne kharida naam/email ke sath", ya isi tarah ka koi
+    sawal poochein, ye tool use karein.
+
+    Args:
+        days: Kitne pichle dinon ka data chahiye (default 30)
+        count: Zyada se zyada kitne buyers dikhane hain (default 50)
+    """
+    since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%dT00:00:00")
+    all_orders = []
+    page = 1
+    while True:
+        data, headers = _woo_get(
+            "orders",
+            {"after": since, "per_page": 100, "page": page, "status": "any"},
+        )
+        if not data:
+            break
+        all_orders.extend(data)
+        total_pages = int(headers.get("X-WP-TotalPages", 1))
+        if page >= total_pages:
+            break
+        page += 1
+
+    if not all_orders:
+        return f"Pichle {days} din mein koi order nahi mila."
+
+    seen = {}
+    for o in all_orders:
+        billing = o.get("billing", {}) or {}
+        email = billing.get("email", "").lower().strip()
+        if not email:
+            continue
+        name = f"{billing.get('first_name', '')} {billing.get('last_name', '')}".strip()
+        is_guest = "Guest" if o.get("customer_id", 0) == 0 else "Registered"
+        if email not in seen:
+            seen[email] = {"name": name, "type": is_guest, "orders": 1}
+        else:
+            seen[email]["orders"] += 1
+
+    if not seen:
+        return f"Pichle {days} din mein koi buyer email nahi mila."
+
+    lines = [
+        f"{i+1}. {info['name']} | {email} | {info['type']} | Orders: {info['orders']}"
+        for i, (email, info) in enumerate(list(seen.items())[:count])
+    ]
+    header = f"Pichle {days} din ke {len(seen)} unique buyers:\n"
+    return header + "\n".join(lines)
+
+
+@tool(show_result=True)
 def get_unique_buyers(days: int = 30) -> str:
     """
     Pichle N dinon mein kitne UNIQUE log ne kharida (chahe unka account ho ya
@@ -274,6 +329,7 @@ woo_agent = Agent(
         get_order_details,
         get_total_customers,
         get_unique_buyers,
+        get_buyer_emails,
         get_recent_customers,
         get_low_stock_products,
         get_top_selling_products,
