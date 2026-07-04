@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Store Agent</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#12151A">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0A0C10;
+    font-family: -apple-system, 'Inter', sans-serif;
+    overscroll-behavior: none;
+  }
+  #app {
+    --bg: #0A0C10;
+    --panel: #14171D;
+    --panel-2: #1B1F27;
+    --accent: #00D9A3;
+    --gold: #F0B94D;
+    --text: #E8EAED;
+    --muted: #7C8494;
+    --border: #22262F;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .header {
+    padding: max(16px, env(safe-area-inset-top)) 18px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 0 0 rgba(0,217,163,0.7);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0,217,163,0.55); }
+    70% { box-shadow: 0 0 0 8px rgba(0,217,163,0); }
+    100% { box-shadow: 0 0 0 0 rgba(0,217,163,0); }
+  }
+  .title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 16px; }
+  .subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .ticker {
+    display: flex;
+    gap: 12px;
+    padding: 10px 18px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .ticker-item {
+    font-size: 11px; color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 12px;
+    flex-shrink: 0;
+  }
+  .ticker-item b { color: var(--gold); font-family: monospace; }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .msg { max-width: 85%; font-size: 14px; line-height: 1.55; }
+  .msg.user {
+    align-self: flex-end;
+    background: var(--accent);
+    color: #072E24;
+    padding: 10px 14px;
+    border-radius: 14px 14px 3px 14px;
+    font-weight: 500;
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    padding: 12px 14px;
+    border-radius: 14px 14px 14px 3px;
+    white-space: pre-wrap;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+  }
+  .msg.typing { color: var(--muted); font-style: italic; font-family: inherit; }
+  .quick-row {
+    display: flex; gap: 8px; padding: 0 16px 12px; flex-wrap: wrap;
+  }
+  .quick {
+    font-size: 12px; color: var(--accent);
+    background: rgba(0,217,163,0.08);
+    border: 1px solid rgba(0,217,163,0.25);
+    border-radius: 20px;
+    padding: 7px 13px;
+  }
+  .input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+  }
+  input[type=text] {
+    flex: 1;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 15px;
+    outline: none;
+  }
+  input[type=text]:focus { border-color: var(--accent); }
+  .send-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    width: 46px;
+    color: #072E24;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .send-btn svg { width: 18px; height: 18px; }
+  .setup-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+    gap: 14px;
+  }
+  .setup-screen input {
+    width: 100%;
+    max-width: 320px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+  .setup-btn {
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #072E24;
+    padding: 12px 20px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="header">
+    <div class="header-left">
+      <span class="dot"></span>
+      <div>
+        <div class="title">Store Agent</div>
+        <div class="subtitle" id="status">connecting…</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="setup" class="setup-screen" style="display:none;">
+    <div class="title">Backend URL set karein</div>
+    <div class="subtitle">Ye ek dafa set karna hai (woo_agent_api.py jahan deploy hai)</div>
+    <input type="text" id="backend-input" placeholder="https://your-app.up.railway.app">
+    <button class="setup-btn" onclick="saveBackend()">Save aur shuru karein</button>
+  </div>
+
+  <div id="main-ui" style="display:none; flex-direction:column; flex:1; min-height:0;">
+    <div class="ticker">
+      <span class="ticker-item">Orders today <b id="t-orders">–</b></span>
+      <span class="ticker-item">Sales 7d <b id="t-sales">–</b></span>
+    </div>
+    <div class="messages" id="messages">
+      <div class="msg bot">Assalam-o-alaikum! Store ke orders, customers ya sales ke baray mein pochein.</div>
+    </div>
+    <div class="quick-row">
+      <span class="quick" onclick="sendMessage('Aaj kitne orders aye?')">Aaj ke orders</span>
+      <span class="quick" onclick="sendMessage('Is hafte ki sales report do')">Weekly sales</span>
+      <span class="quick" onclick="sendMessage('Low stock products dikhao')">Low stock</span>
+      <span class="quick" onclick="sendMessage('Total customers kitne hain?')">Customers</span>
+    </div>
+    <div class="input-bar">
+      <input type="text" id="input" placeholder="Message likhein…">
+      <button class="send-btn" onclick="sendMessage()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var API_URL = localStorage.getItem('woo_agent_backend') || '';
+
+  function init() {
+    if (!API_URL) {
+      document.getElementById('setup').style.display = 'flex';
+      document.getElementById('main-ui').style.display = 'none';
+    } else {
+      document.getElementById('setup').style.display = 'none';
+      document.getElementById('main-ui').style.display = 'flex';
+      document.getElementById('input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') sendMessage();
+      });
+      refreshTicker();
+      setInterval(refreshTicker, 60000);
+    }
+  }
+
+  function saveBackend() {
+    var val = document.getElementById('backend-input').value.trim().replace(/\/$/, '');
+    if (!val) return;
+    localStorage.setItem('woo_agent_backend', val);
+    API_URL = val;
+    init();
+  }
+
+  function addMessage(text, cls) {
+    var div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.textContent = text;
+    var box = document.getElementById('messages');
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  function sendMessage(preset) {
+    var input = document.getElementById('input');
+    var text = (preset !== undefined ? preset : input.value).trim();
+    if (!text) return;
+    addMessage(text, 'user');
+    input.value = '';
+    var typing = addMessage('Agent soch raha hai…', 'bot typing');
+
+    fetch(API_URL + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      typing.remove();
+      addMessage(data.reply || 'Kuch masla ho gaya, dobara koshish karein.', 'bot');
+    })
+    .catch(function() {
+      typing.remove();
+      addMessage('Backend se connect nahi ho saka. URL check karein.', 'bot');
+    });
+  }
+
+  function refreshTicker() {
+    fetch(API_URL + '/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: '__TICKER__' })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      document.getElementById('status').textContent = 'online';
+      if (data.orders_today !== undefined) document.getElementById('t-orders').textContent = data.orders_today;
+      if (data.sales_7d !== undefined) document.getElementById('t-sales').textContent = data.sales_7d;
+    })
+    .catch(function() { document.getElementById('status').textContent = 'offline'; });
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(function(){});
+  }
+
+  init();
+</script>
+
+</body>
+</html>
